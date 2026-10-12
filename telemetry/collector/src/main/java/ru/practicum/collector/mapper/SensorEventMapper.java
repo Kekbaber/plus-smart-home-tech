@@ -1,8 +1,11 @@
 package ru.practicum.collector.mapper;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.practicum.collector.model.sensor.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class SensorEventMapper {
 
     public static SensorEventAvro toAvro(SensorEvent sensorEvent) {
