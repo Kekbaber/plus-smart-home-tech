@@ -1,6 +1,7 @@
 package ru.yandex.practicum.kafka.serializer;
 
 import org.apache.avro.io.BinaryEncoder;
+import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecordBase;
@@ -11,7 +12,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class BaseAvroSerializer<T extends SpecificRecordBase> implements Serializer<T> {
-    private final SpecificDatumWriter<T> writer = new SpecificDatumWriter<>();
 
     @Override
     public byte[] serialize(String topic, T data) {
@@ -20,6 +20,7 @@ public class BaseAvroSerializer<T extends SpecificRecordBase> implements Seriali
         }
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);
+            DatumWriter<T> writer = new SpecificDatumWriter<>(data.getSchema());
             writer.write(data, encoder);
             encoder.flush();
             return outputStream.toByteArray();
