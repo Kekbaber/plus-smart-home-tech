@@ -1,10 +1,13 @@
 package ru.practicum.collector.mapper;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.practicum.collector.model.hub.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
 import java.util.List;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class HubEventMapper {
 
     public static HubEventAvro toAvro(HubEvent hubEvent) {
@@ -13,7 +16,7 @@ public class HubEventMapper {
             case DeviceRemovedEvent e -> toDeviceRemoved(e);
             case ScenarioAddedEvent e -> toScenarioAdded(e);
             case ScenarioRemovedEvent e -> toScenarioRemoved(e);
-            default -> null;
+            default -> throw new IllegalArgumentException("Unknown event: " + hubEvent.getType());
         };
 
         return HubEventAvro.newBuilder()
@@ -74,8 +77,11 @@ public class HubEventMapper {
     private static DeviceActionAvro toDeviceAction(DeviceAction a) {
         DeviceActionAvro.Builder builder = DeviceActionAvro.newBuilder()
                 .setSensorId(a.getSensorId())
-                .setType(ActionTypeAvro.valueOf(a.getType().name()))
-                .setValue(a.getValue());
+                .setType(ActionTypeAvro.valueOf(a.getType().name()));
+
+        if (a.getValue() != null) {
+            builder.setValue(a.getValue());
+        }
 
         return builder.build();
     }

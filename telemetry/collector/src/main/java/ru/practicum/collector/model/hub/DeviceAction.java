@@ -11,6 +11,6 @@ import ru.practicum.collector.model.hub.enums.ActionType;
 public class DeviceAction {
     private String sensorId;
     private ActionType type;
-    private int value;
+    private Integer value;
 
 }
