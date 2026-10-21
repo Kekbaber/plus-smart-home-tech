@@ -11,3 +11,6 @@ kafka:
     value-serializer: ru.yandex.practicum.kafka.serializer.BaseAvroSerializer
     acks: all
     enable-idempotence: true
+grpc:
+  server:
+    port: 59091
