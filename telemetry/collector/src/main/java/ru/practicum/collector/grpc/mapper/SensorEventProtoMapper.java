@@ -18,11 +18,11 @@ public class SensorEventProtoMapper {
 
     public static SensorEvent toModel(SensorEventProto proto) {
         SensorEvent event = switch (proto.getPayloadCase()) {
-            case MOTION_SENSOR -> toMotionSensor(proto.getMotionSensor());
-            case TEMPERATURE_SENSOR -> toTemperatureSensor(proto.getTemperatureSensor());
-            case LIGHT_SENSOR -> toLightSensor(proto.getLightSensor());
-            case CLIMATE_SENSOR -> toClimateSensor(proto.getClimateSensor());
-            case SWITCH_SENSOR -> toSwitchSensor(proto.getSwitchSensor());
+            case MOTION_SENSOR_EVENT -> toMotionSensor(proto.getMotionSensorEvent());
+            case TEMPERATURE_SENSOR_EVENT -> toTemperatureSensor(proto.getTemperatureSensorEvent());
+            case LIGHT_SENSOR_EVENT -> toLightSensor(proto.getLightSensorEvent());
+            case CLIMATE_SENSOR_EVENT -> toClimateSensor(proto.getClimateSensorEvent());
+            case SWITCH_SENSOR_EVENT -> toSwitchSensor(proto.getSwitchSensorEvent());
             case PAYLOAD_NOT_SET -> throw new IllegalArgumentException("Unknown event: " + proto.getPayloadCase());
         };
 
