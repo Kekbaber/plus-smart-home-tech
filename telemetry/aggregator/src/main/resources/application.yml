@@ -8,7 +8,7 @@ kafka:
     snapshots: telemetry.snapshots.v1
   consumer:
     group-id: telemetry.aggregator
-    key-deserializer: org.apache.kafka.common.serialization.VoidDeserializer
+    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     value-deserializer: ru.yandex.practicum.kafka.deserializer.SensorEventDeserializer
     auto-offset-reset: earliest
     enable-auto-commit: false

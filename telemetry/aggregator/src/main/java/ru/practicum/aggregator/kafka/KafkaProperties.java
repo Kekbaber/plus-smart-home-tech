@@ -2,8 +2,8 @@ package ru.practicum.aggregator.kafka;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.common.serialization.VoidDeserializer;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import ru.yandex.practicum.kafka.deserializer.SensorEventDeserializer;
 import ru.yandex.practicum.kafka.serializer.BaseAvroSerializer;
@@ -29,7 +29,7 @@ public class KafkaProperties {
     @Setter
     public static class Consumer {
         private String groupId = "telemetry.aggregator";
-        private Class<?> keyDeserializer = VoidDeserializer.class;
+        private Class<?> keyDeserializer = StringDeserializer.class;
         private Class<?> valueDeserializer = SensorEventDeserializer.class;
         private String autoOffsetReset = "earliest";
         private boolean enableAutoCommit = false;
