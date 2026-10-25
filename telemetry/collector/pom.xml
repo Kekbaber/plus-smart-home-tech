@@ -44,7 +44,6 @@
             <groupId>net.devh</groupId>
             <artifactId>grpc-server-spring-boot-starter</artifactId>
         </dependency>
-
     </dependencies>
 
     <build>
