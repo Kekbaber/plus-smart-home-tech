@@ -1,19 +1,33 @@
 package ru.practicum.analyzer.service;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import ru.practicum.analyzer.kafka.KafkaProperties;
+import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 
-@Slf4j
 @Component
-public class HubEventProcessor implements Runnable {
-    // ...
+public class HubEventProcessor extends AbstractEventProcessor<HubEventAvro> {
 
-    @Override
-    public void run() {
-        // подписка на топики
-        // ...
-        // цикл опроса
+    private final KafkaProperties kafkaProperties;
+    private final HubEventService hubEventService;
+
+    public HubEventProcessor(
+            KafkaProperties kafkaProperties,
+            HubEventService hubEventService,
+            @Qualifier("hubEventConsumer") Consumer<String, HubEventAvro> consumer) {
+        super(consumer);
+        this.kafkaProperties = kafkaProperties;
+        this.hubEventService = hubEventService;
     }
 
-    // ...детали реализации...
+    @Override
+    protected String getTopic() {
+        return kafkaProperties.getTopics().getHubs();
+    }
+
+    @Override
+    protected void handle(HubEventAvro event) {
+        hubEventService.handle(event);
+    }
 }

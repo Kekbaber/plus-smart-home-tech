@@ -1,12 +1,33 @@
 package ru.practicum.analyzer.service;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import ru.practicum.analyzer.kafka.KafkaProperties;
+import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 @Component
-@Slf4j
-public class SnapshotProcessor {
-    public void start() {
-        log.info("SnapshotProcessor started");
+public class SnapshotProcessor extends AbstractEventProcessor<SensorsSnapshotAvro> {
+
+    private final KafkaProperties kafkaProperties;
+    private final ScenarioAnalyzerService scenarioAnalyzerService;
+
+    public SnapshotProcessor(
+            KafkaProperties kafkaProperties,
+            ScenarioAnalyzerService scenarioAnalyzerService,
+            @Qualifier("snapshotConsumer") Consumer<String, SensorsSnapshotAvro> consumer) {
+        super(consumer);
+        this.kafkaProperties = kafkaProperties;
+        this.scenarioAnalyzerService = scenarioAnalyzerService;
+    }
+
+    @Override
+    protected String getTopic() {
+        return kafkaProperties.getTopics().getSnapshots();
+    }
+
+    @Override
+    protected void handle(SensorsSnapshotAvro snapshot) {
+        scenarioAnalyzerService.analyze(snapshot);
     }
 }

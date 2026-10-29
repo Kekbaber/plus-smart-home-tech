@@ -10,22 +10,34 @@ import ru.practicum.analyzer.service.SnapshotProcessor;
 @SpringBootApplication
 @ConfigurationPropertiesScan
 public class Analyzer {
+
+    private static final long SHUTDOWN_JOIN_TIMEOUT_MILLIS = 5000;
+
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(Analyzer.class, args);
+        // Spring сам закроет контекст (gRPC-канал, datasource) при завершении JVM
+        context.registerShutdownHook();
 
-        final HubEventProcessor hubEventProcessor =
-                context.getBean(HubEventProcessor.class);
-        SnapshotProcessor snapshotProcessor =
-                context.getBean(SnapshotProcessor.class);
+        final HubEventProcessor hubEventProcessor = context.getBean(HubEventProcessor.class);
+        final SnapshotProcessor snapshotProcessor = context.getBean(SnapshotProcessor.class);
 
-        // запускаем в отдельном потоке обработчик событий
-        // от пользовательских хабов
         Thread hubEventsThread = new Thread(hubEventProcessor);
         hubEventsThread.setName("HubEventHandlerThread");
         hubEventsThread.start();
 
-        // В текущем потоке начинаем обработку
-        // снимков состояния датчиков
-        snapshotProcessor.start();
+        // при завершении JVM будим оба цикла опроса и ждём их корректной остановки
+        final Thread mainThread = Thread.currentThread();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            hubEventProcessor.wakeup();
+            snapshotProcessor.wakeup();
+            try {
+                hubEventsThread.join(SHUTDOWN_JOIN_TIMEOUT_MILLIS);
+                mainThread.join(SHUTDOWN_JOIN_TIMEOUT_MILLIS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }, "analyzer-shutdown"));
+
+        snapshotProcessor.run();
     }
 }
