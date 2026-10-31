@@ -1,4 +1,4 @@
-package ru.practicum.collector.mapper;
+package ru.practicum.collector.kafka.mapper;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -6,7 +6,7 @@ import ru.practicum.collector.model.sensor.*;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class SensorEventMapper {
+public class SensorEventAvroMapper {
 
     public static SensorEventAvro toAvro(SensorEvent sensorEvent) {
         Object payload = switch (sensorEvent) {
