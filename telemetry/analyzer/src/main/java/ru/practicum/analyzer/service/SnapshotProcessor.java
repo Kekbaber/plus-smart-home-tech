@@ -1,7 +1,7 @@
 package ru.practicum.analyzer.service;
 
-import org.apache.kafka.clients.consumer.Consumer;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.stereotype.Component;
 import ru.practicum.analyzer.kafka.KafkaProperties;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
@@ -15,8 +15,8 @@ public class SnapshotProcessor extends AbstractEventProcessor<SensorsSnapshotAvr
     public SnapshotProcessor(
             KafkaProperties kafkaProperties,
             ScenarioAnalyzerService scenarioAnalyzerService,
-            @Qualifier("snapshotConsumer") Consumer<String, SensorsSnapshotAvro> consumer) {
-        super(consumer);
+            @Qualifier("snapshotConsumerFactory") ConsumerFactory<String, SensorsSnapshotAvro> consumerFactory) {
+        super(consumerFactory);
         this.kafkaProperties = kafkaProperties;
         this.scenarioAnalyzerService = scenarioAnalyzerService;
     }
@@ -29,5 +29,15 @@ public class SnapshotProcessor extends AbstractEventProcessor<SensorsSnapshotAvr
     @Override
     protected void handle(SensorsSnapshotAvro snapshot) {
         scenarioAnalyzerService.analyze(snapshot);
+    }
+
+    @Override
+    protected CommitMode commitMode() {
+        return CommitMode.ASYNC_BATCHED;
+    }
+
+    @Override
+    protected int commitBatchSize() {
+        return kafkaProperties.getConsumer().getSnapshot().getCommitBatchSize();
     }
 }

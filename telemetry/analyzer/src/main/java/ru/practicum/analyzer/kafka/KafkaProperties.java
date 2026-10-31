@@ -35,5 +35,6 @@ public class KafkaProperties {
         private String autoOffsetReset;
         private boolean enableAutoCommit;
         private int maxPollRecords;
+        private int commitBatchSize;
     }
 }

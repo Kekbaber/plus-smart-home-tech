@@ -1,15 +1,16 @@
 package ru.practicum.analyzer.kafka;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
-import java.util.Properties;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 @RequiredArgsConstructor
@@ -17,8 +18,8 @@ public class KafkaConsumerConfig {
 
     private final KafkaProperties kafkaProperties;
 
-    private Properties props(KafkaProperties.ConsumerConfig cfg) {
-        Properties props = new Properties();
+    private Map<String, Object> props(KafkaProperties.ConsumerConfig cfg) {
+        Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProperties.getBootstrapServers());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, cfg.getGroupId());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, cfg.getKeyDeserializer());
@@ -29,13 +30,13 @@ public class KafkaConsumerConfig {
         return props;
     }
 
-    @Bean(destroyMethod = "")
-    public Consumer<String, HubEventAvro> hubEventConsumer() {
-        return new KafkaConsumer<>(props(kafkaProperties.getConsumer().getHub()));
+    @Bean
+    public ConsumerFactory<String, HubEventAvro> hubEventConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(props(kafkaProperties.getConsumer().getHub()));
     }
 
-    @Bean(destroyMethod = "")
-    public Consumer<String, SensorsSnapshotAvro> snapshotConsumer() {
-        return new KafkaConsumer<>(props(kafkaProperties.getConsumer().getSnapshot()));
+    @Bean
+    public ConsumerFactory<String, SensorsSnapshotAvro> snapshotConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(props(kafkaProperties.getConsumer().getSnapshot()));
     }
 }

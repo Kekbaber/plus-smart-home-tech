@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class HubEventService {
 
     private final SensorRepository sensorRepository;
@@ -88,21 +88,14 @@ public class HubEventService {
         Map<String, Sensor> sensors = findHubSensors(sensorIds, hubId);
 
         if (sensors.size() != sensorIds.size()) {
-            log.warn("Cannot save scenario '{}' for hub {}: sensors {} are missing or belong to another hub",
+            throw new IllegalArgumentException(String.format(
+                    "Cannot save scenario '%s' for hub %s: sensors %s are missing or belong to another hub",
                     event.getName(), hubId,
-                    sensorIds.stream().filter(id -> !sensors.containsKey(id)).toList());
-            return;
+                    sensorIds.stream().filter(id -> !sensors.containsKey(id)).toList()));
         }
 
         Scenario scenario = scenarioRepository.findByHubIdAndName(hubId, event.getName())
                 .orElseGet(() -> newScenario(hubId, event.getName()));
-
-        List<Condition> staleConditions = scenario.getConditions().stream()
-                .map(ScenarioCondition::getCondition)
-                .toList();
-        List<Action> staleActions = scenario.getActions().stream()
-                .map(ScenarioAction::getAction)
-                .toList();
 
         scenario.getConditions().clear();
         scenario.getActions().clear();
@@ -116,7 +109,6 @@ public class HubEventService {
                 HubEventMapper.toAction(action)));
 
         scenarioRepository.saveAndFlush(scenario);
-        deleteOrphans(staleConditions, staleActions);
 
         log.info("Scenario '{}' saved for hub {}: {} conditions, {} actions",
                 event.getName(), hubId,
@@ -126,17 +118,9 @@ public class HubEventService {
     private void removeScenario(String hubId, ScenarioRemovedEventAvro event) {
         scenarioRepository.findByHubIdAndName(hubId, event.getName())
                 .ifPresentOrElse(scenario -> {
-                    List<Condition> staleConditions = scenario.getConditions().stream()
-                            .map(ScenarioCondition::getCondition)
-                            .toList();
-                    List<Action> staleActions = scenario.getActions().stream()
-                            .map(ScenarioAction::getAction)
-                            .toList();
-
                     scenarioRepository.delete(scenario);
                     scenarioRepository.flush();
 
-                    deleteOrphans(staleConditions, staleActions);
                     log.info("Scenario '{}' removed from hub {}", event.getName(), hubId);
                 }, () -> log.debug("Scenario '{}' not found in hub {}, skipping",
                         event.getName(), hubId));

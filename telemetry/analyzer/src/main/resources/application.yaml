@@ -1,6 +1,8 @@
 spring:
   application:
     name: analyzer
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
   datasource:
     url: jdbc:postgresql://localhost:5432/telemetry_analyzer
     username: dbuser
@@ -33,6 +35,7 @@ kafka:
       auto-offset-reset: earliest
       enable-auto-commit: false
       max-poll-records: 100
+      commit-batch-size: 100
     hub:
       group-id: telemetry.analyzer.hub
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

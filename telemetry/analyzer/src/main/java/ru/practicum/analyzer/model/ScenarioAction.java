@@ -25,7 +25,7 @@ public class ScenarioAction {
     private Sensor sensor;
 
     @MapsId("actionId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.PERSIST)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.ALL)
     @JoinColumn(name = "action_id")
     private Action action;
 

@@ -8,25 +8,45 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.errors.WakeupException;
+import org.springframework.kafka.core.ConsumerFactory;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 public abstract class AbstractEventProcessor<T> implements Runnable {
 
+    /**
+     * Стратегия коммита оффсетов:
+     * SYNC_PER_BATCH — один commitSync после обработки всей пачки (для редких событий);
+     * ASYNC_BATCHED — commitAsync каждые commitBatchSize сообщений + commitSync в finally (для частых событий).
+     */
+    protected enum CommitMode {
+        SYNC_PER_BATCH,
+        ASYNC_BATCHED
+    }
+
     private static final Duration POLL_TIMEOUT = Duration.ofMillis(1000);
 
     private final Consumer<String, T> consumer;
 
-    protected AbstractEventProcessor(Consumer<String, T> consumer) {
-        this.consumer = consumer;
+    protected AbstractEventProcessor(ConsumerFactory<String, T> consumerFactory) {
+        this.consumer = consumerFactory.createConsumer();
     }
 
     protected abstract String getTopic();
 
     protected abstract void handle(T event);
+
+    protected CommitMode commitMode() {
+        return CommitMode.SYNC_PER_BATCH;
+    }
+
+    protected int commitBatchSize() {
+        return 1;
+    }
 
     public void wakeup() {
         consumer.wakeup();
@@ -36,26 +56,47 @@ public abstract class AbstractEventProcessor<T> implements Runnable {
     public void run() {
         String topic = getTopic();
         String processorName = getClass().getSimpleName();
+        CommitMode commitMode = commitMode();
+        int commitBatchSize = commitBatchSize();
 
         consumer.subscribe(List.of(topic));
         log.info("{} subscribed to topic {}", processorName, topic);
+
+        Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
+        int processedRecords = 0;
 
         try {
             while (true) {
                 try {
                     ConsumerRecords<String, T> records = consumer.poll(POLL_TIMEOUT);
+
                     for (ConsumerRecord<String, T> record : records) {
                         if (record.value() != null) {
                             try {
                                 handle(record.value());
-                            } catch (Exception e) {
-                                log.error("Failed to process record from {}-{} at offset {}",
+                            } catch (RuntimeException e) {
+                                log.error("Failed to process record {}-{} at offset {}",
                                         record.topic(), record.partition(), record.offset(), e);
+                                throw e;
                             }
                         }
 
-                        TopicPartition partition = new TopicPartition(record.topic(), record.partition());
-                        consumer.commitSync(Map.of(partition, new OffsetAndMetadata(record.offset() + 1)));
+                        currentOffsets.put(
+                                new TopicPartition(record.topic(), record.partition()),
+                                new OffsetAndMetadata(record.offset() + 1));
+
+                        if (commitMode == CommitMode.ASYNC_BATCHED
+                                && ++processedRecords % commitBatchSize == 0) {
+                            consumer.commitAsync(currentOffsets, (offsets, exception) -> {
+                                if (exception != null) {
+                                    log.warn("{} failed to commit offsets: {}", processorName, offsets, exception);
+                                }
+                            });
+                        }
+                    }
+
+                    if (commitMode == CommitMode.SYNC_PER_BATCH && !records.isEmpty()) {
+                        consumer.commitSync(currentOffsets);
                     }
                 } catch (RecordDeserializationException e) {
                     TopicPartition tp = new TopicPartition(e.topicPartition().topic(), e.topicPartition().partition());
@@ -71,11 +112,16 @@ public abstract class AbstractEventProcessor<T> implements Runnable {
             log.error("{} stopped due to unexpected error", processorName, e);
         } finally {
             try {
-                consumer.close();
-            } catch (Exception e) {
-                log.warn("Error while closing consumer", e);
+                consumer.commitSync(currentOffsets);
+                log.info("{} final offsets committed: {}", processorName, currentOffsets);
+            } finally {
+                try {
+                    consumer.close();
+                } catch (Exception e) {
+                    log.warn("Error while closing consumer", e);
+                }
+                log.info("{} stopped", processorName);
             }
-            log.info("{} stopped", processorName);
         }
     }
 }

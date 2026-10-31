@@ -1,7 +1,7 @@
 package ru.practicum.analyzer.service;
 
-import org.apache.kafka.clients.consumer.Consumer;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.stereotype.Component;
 import ru.practicum.analyzer.kafka.KafkaProperties;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
@@ -15,8 +15,8 @@ public class HubEventProcessor extends AbstractEventProcessor<HubEventAvro> {
     public HubEventProcessor(
             KafkaProperties kafkaProperties,
             HubEventService hubEventService,
-            @Qualifier("hubEventConsumer") Consumer<String, HubEventAvro> consumer) {
-        super(consumer);
+            @Qualifier("hubEventConsumerFactory") ConsumerFactory<String, HubEventAvro> consumerFactory) {
+        super(consumerFactory);
         this.kafkaProperties = kafkaProperties;
         this.hubEventService = hubEventService;
     }
