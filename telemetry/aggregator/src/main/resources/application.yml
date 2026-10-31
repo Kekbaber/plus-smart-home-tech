@@ -1,6 +1,8 @@
 spring:
   application:
     name: aggregator
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 kafka:
   bootstrap-servers: localhost:9092
   topics:
@@ -12,6 +14,8 @@ kafka:
     value-deserializer: ru.yandex.practicum.kafka.deserializer.SensorEventDeserializer
     auto-offset-reset: earliest
     enable-auto-commit: false
+    commit-batch-size: 10
+    poll-timeout-ms: 1000
   producer:
     key-serializer: org.apache.kafka.common.serialization.StringSerializer
     value-serializer: ru.yandex.practicum.kafka.serializer.BaseAvroSerializer

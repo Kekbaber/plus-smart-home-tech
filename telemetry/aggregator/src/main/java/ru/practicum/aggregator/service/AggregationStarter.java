@@ -10,6 +10,8 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.stereotype.Component;
 import ru.practicum.aggregator.kafka.KafkaProperties;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
@@ -25,17 +27,19 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AggregationStarter {
 
-    private static final int COMMIT_BATCH_SIZE = 10;
-    private static final Duration POLL_TIMEOUT = Duration.ofMillis(1000);
-
     private final KafkaProperties kafkaProperties;
-    private final Consumer<String, SensorEventAvro> consumer;
-    private final Producer<String, SensorsSnapshotAvro> producer;
+    private final ConsumerFactory<String, SensorEventAvro> consumerFactory;
+    private final ProducerFactory<String, SensorsSnapshotAvro> producerFactory;
     private final SnapshotService snapshotService;
 
     public void start() {
         String sensorsTopic = kafkaProperties.getTopics().getSensors();
         String snapshotsTopic = kafkaProperties.getTopics().getSnapshots();
+        int commitBatchSize = kafkaProperties.getConsumer().getCommitBatchSize();
+        Duration pollTimeout = Duration.ofMillis(kafkaProperties.getConsumer().getPollTimeoutMs());
+
+        Consumer<String, SensorEventAvro> consumer = consumerFactory.createConsumer();
+        Producer<String, SensorsSnapshotAvro> producer = producerFactory.createProducer();
 
         Runtime.getRuntime().addShutdownHook(new Thread(consumer::wakeup));
 
@@ -47,20 +51,20 @@ public class AggregationStarter {
 
         try {
             while (true) {
-                ConsumerRecords<String, SensorEventAvro> records = consumer.poll(POLL_TIMEOUT);
+                ConsumerRecords<String, SensorEventAvro> records = consumer.poll(pollTimeout);
 
                 for (ConsumerRecord<String, SensorEventAvro> record : records) {
                     SensorEventAvro event = record.value();
                     if (event != null) {
                         snapshotService.updateState(event)
-                                .ifPresent(snapshot -> sendSnapshot(snapshotsTopic, snapshot));
+                                .ifPresent(snapshot -> sendSnapshot(producer, snapshotsTopic, snapshot));
                     }
 
                     currentOffsets.put(
                             new TopicPartition(record.topic(), record.partition()),
                             new OffsetAndMetadata(record.offset() + 1));
 
-                    if (++processedRecords % COMMIT_BATCH_SIZE == 0) {
+                    if (++processedRecords % commitBatchSize == 0) {
                         consumer.commitAsync(currentOffsets, (offsets, exception) -> {
                             if (exception != null) {
                                 log.warn("Failed to commit offsets: {}", offsets, exception);
@@ -85,7 +89,8 @@ public class AggregationStarter {
         }
     }
 
-    private void sendSnapshot(String topic, SensorsSnapshotAvro snapshot) {
+    private void sendSnapshot(Producer<String, SensorsSnapshotAvro> producer, String topic,
+                              SensorsSnapshotAvro snapshot) {
         ProducerRecord<String, SensorsSnapshotAvro> message = new ProducerRecord<>(
                 topic,
                 null,
@@ -95,7 +100,7 @@ public class AggregationStarter {
 
         producer.send(message, (metadata, exception) -> {
             if (exception != null) {
-                log.error("Failed to send snapshot for hub {} to topic {}",
+                log.error("Failed to send snapshot for hub {} to topic {}: {}",
                         snapshot.getHubId(), topic, exception);
             } else {
                 log.debug("Snapshot for hub {} sent to topic {} partition {} offset {}",
