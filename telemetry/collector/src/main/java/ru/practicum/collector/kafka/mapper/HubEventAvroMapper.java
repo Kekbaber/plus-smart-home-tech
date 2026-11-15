@@ -1,4 +1,4 @@
-package ru.practicum.collector.mapper;
+package ru.practicum.collector.kafka.mapper;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -8,7 +8,7 @@ import ru.yandex.practicum.kafka.telemetry.event.*;
 import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class HubEventMapper {
+public class HubEventAvroMapper {
 
     public static HubEventAvro toAvro(HubEvent hubEvent) {
         Object payload = switch (hubEvent) {
@@ -41,11 +41,11 @@ public class HubEventMapper {
 
     private static ScenarioAddedEventAvro toScenarioAdded(ScenarioAddedEvent e) {
         List<ScenarioConditionAvro> conditions = e.getConditions().stream()
-                .map(HubEventMapper::toScenarioCondition)
+                .map(HubEventAvroMapper::toScenarioCondition)
                 .toList();
 
         List<DeviceActionAvro> actions = e.getActions().stream()
-                .map(HubEventMapper::toDeviceAction)
+                .map(HubEventAvroMapper::toDeviceAction)
                 .toList();
 
         return ScenarioAddedEventAvro.newBuilder()
