@@ -1,0 +1,14 @@
+kafka:
+  bootstrap-servers: localhost:9092
+  topics:
+    sensor: telemetry.sensors.v1
+    hub: telemetry.hubs.v1
+  producer:
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: ru.yandex.practicum.kafka.serializer.BaseAvroSerializer
+    acks: all
+    enable-idempotence: true
+grpc:
+  server:
+    port: 59091
+    reflection-service-enabled: true
